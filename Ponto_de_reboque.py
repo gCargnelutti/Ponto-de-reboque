@@ -17,7 +17,7 @@ K_Corr = int(EntreEixos_mm/EntreEixos_Pixel) #Coeficiente de correção [mm/pixe
 Cg_x = 500 #Coordenadas do centro de gravidade em relação ao centro da roda traseira [mm]
 Cg_y = 250 #Coordenadas do centro de gravidade em relação ao centro da roda traseira [mm]
 L = 1500 #Comprimento da corda [mm]
-h = 350 #Altura do Cg da carga [mm]
+h = 150 #Altura do Cg da carga [mm]
 R = 266 #Raio da roda [mm]
 M = 235 #Massa do carro [Kg]
 g = 9.8 #Aceleração da gravidade [m/s^2]
@@ -31,10 +31,10 @@ Coef_Atrito_L = 0.8 #Coeficiente de atrito da carga com a superficie
 
 
 #Parametros relacionados à analise:
-X_min = 88 #Limite inferior de analise em "x" [mm]
-X_max = 89 #Limite superior de analise em "x" [mm]
-Y_min = 50 #Limite inferior de analise em "y" [mm]
-Y_max = 150 #Limite superior de analise em "y" [mm]
+X_min = -100 #Limite inferior de analise em "x" [mm]
+X_max = 300 #Limite superior de analise em "x" [mm]
+Y_min = 0 #Limite inferior de analise em "y" [mm]
+Y_max = 700 #Limite superior de analise em "y" [mm]
 passo = 1
 
 
@@ -55,7 +55,7 @@ MainCanvas[0:Alt_Main,int(L/K_Corr):Lrg_Main+int(L/K_Corr)] = MainImage
 #Coordenadas do centro da roda: (x,y) na nova imagem:
 Roda_x_pix = Lrg_Canv - Lrg_Main + Im_x_R
 Roda_y_pix = Alt_Canv - Alt_Main + Im_y_R
-MainCanvas = cv2.circle(MainCanvas, [Roda_x_pix,Roda_y_pix], radius=10, color=(255, 0, 255), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
+#MainCanvas = cv2.circle(MainCanvas, [Roda_x_pix,Roda_y_pix], radius=10, color=(255, 0, 255), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
 #Coordenadas do C.G. do carro: (x,y) na nova imagem:
 Cg_x_pix = Roda_x_pix + int(Cg_x/K_Corr)
 Cg_y_pix = Roda_y_pix - int(Cg_y/K_Corr)
@@ -63,27 +63,34 @@ MainCanvas = cv2.circle(MainCanvas, [Cg_x_pix,Cg_y_pix], radius=10, color=(0, 25
 TemporaryCanvas = 255 * np.ones([Alt_Canv,Lrg_Canv,3], np.uint8)
 
 
+Matriz_Carga = np.zeros(( int((X_max - X_min)/passo) , int((Y_max - Y_min)/passo)))
+Matriz_Cores = np.zeros(( int((X_max - X_min)/passo) , int((Y_max - Y_min)/passo)))
+Matriz_sin = np.zeros(( X_max - X_min , Y_max - Y_min))
 frame_number = 1 
+
+
 for x in range(X_min,X_max,passo):
     for y in range(Y_min,Y_max,passo):
         
 
 
 
-        #                M A N I P U L A C A O   D A   I M A G E M                # 
+        # #                M A N I P U L A C A O   D A   I M A G E M                # 
         
-        #Resetando a imagem temporaria:
-        TemporaryCanvas[0:Alt_Canv , 0:Lrg_Canv] = MainCanvas
+        # #Resetando a imagem temporaria:
+        # TemporaryCanvas[0:Alt_Canv , 0:Lrg_Canv] = MainCanvas
         
-        #Convertemos essas coordenadas para o pixel mais proximo:
-        y_pix = Roda_y_pix - int(y/K_Corr)
-        x_pix = Roda_x_pix - int(x/K_Corr)
+        # #Convertemos essas coordenadas para o pixel mais proximo:
+        # y_pix = Roda_y_pix - int(y/K_Corr)
+        # x_pix = Roda_x_pix - int(x/K_Corr)
 
         #Calculamos a posição do C.G. da carga em relação ao centro da roda.
         Load_Cg_y = h-R #[mm]
         Load_Cg_x = x - np.sqrt(L**2 - ((y-Load_Cg_y)**2)) #[mm]
         Load_Cg_y_pix = Roda_y_pix - int(Load_Cg_y/K_Corr) #[pixel]
         Load_Cg_x_pix = MainCanvas.shape[1]-MainImage.shape[1]+Im_x_R+int(Load_Cg_x/K_Corr) #[pixel]
+
+
 
 
 
@@ -104,7 +111,7 @@ for x in range(X_min,X_max,passo):
         F_Ver_Max_Elv = np.tan(theta) * (M*g*Cg_x)/(y + np.tan(theta)*x + R) #[N]
         Carga_Max_Elv = (F_Hor_Max_Elv/Coef_Atrito_L + F_Ver_Max_Elv)/g #[Kg]
         #print(F_Ver_Max_Elv)
-        print(np.tan(theta))
+        #print(np.tan(theta))
 
         #Condicao 2: Escorregamento dos pneus (4x4):
         F_Hor_Max_4x4 = Coef_Atrito_R * (M*g)/(1 - Coef_Atrito_R*np.tan(theta))
@@ -125,48 +132,69 @@ for x in range(X_min,X_max,passo):
         Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Condicoes))] #Criterio de comparação
         
         
-    
+
+
+
+        #                A R M A Z E N A N D O   V A L O R E S                  #
+        Cor_Carga_Max_Elv = [1,0,0]
+        Cor_Carga_Max_4x4 = [0,1,0]
+        Cor_Carga_Max_4x2 = [0,0,1]
+        Lista_Cores = [Cor_Carga_Max_Elv,Cor_Carga_Max_4x4,Cor_Carga_Max_4x2]
+        Lista_Cores_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Cores))]
+
+        Carga_max = Lista_Carga_Sorted[0]
+        Matriz_Carga[x - X_min , y - Y_min] = Carga_max
+        #Matriz_Cores[(int((x - X_min)/passo)) , (int((y - Y_min)/passo)) ] = Lista_Cores_Sorted[0]
 
 
 
 
+
         
 
-        #                M A N I P U L A C A O   D A   I M A G EM                #
+        # #               M A N I P U L A C A O   D A   I M A G EM                #
         
-        #Desenha um ponto na coordenada de analise:
-        TemporaryCanvas = cv2.circle(TemporaryCanvas, [x_pix,y_pix], radius=3, color=(0, 0, 0), thickness=2)
+        # #Desenha um ponto na coordenada de analise:
+        # TemporaryCanvas = cv2.circle(TemporaryCanvas, [x_pix,y_pix], radius=3, color=(0, 0, 0), thickness=2)
         
-        #Desenha um ponto no C.G. da carga:
-        TemporaryCanvas = cv2.circle(TemporaryCanvas, [Load_Cg_x_pix,Load_Cg_y_pix], radius=3, color=(0, 0, 255), thickness=2)
+        # #Desenha um ponto no C.G. da carga:
+        # TemporaryCanvas = cv2.circle(TemporaryCanvas, [Load_Cg_x_pix,Load_Cg_y_pix], radius=3, color=(0, 0, 255), thickness=2)
         
-        #Desenha uma linha representando a corda:
-        TemporaryCanvas = cv2.line(TemporaryCanvas, [x_pix,y_pix], [Load_Cg_x_pix,Load_Cg_y_pix], color=(0, 0, 0), thickness=2)
+        # #Desenha uma linha representando a corda:
+        # TemporaryCanvas = cv2.line(TemporaryCanvas, [x_pix,y_pix], [Load_Cg_x_pix,Load_Cg_y_pix], color=(0, 0, 0), thickness=2)
         
-        #Desenha uma caixa para representar a carga:
-        Lado_2 = int(h/K_Corr)-15
-        start_point = (Load_Cg_x_pix-Lado_2,Load_Cg_y_pix-Lado_2) 
-        end_point = (Load_Cg_x_pix+Lado_2,Load_Cg_y_pix+Lado_2) 
-        TemporaryCanvas = cv2.rectangle(TemporaryCanvas, start_point, end_point, color=(0, 0, 255), thickness=5)
+        # #Desenha uma caixa para representar a carga:
+        # Lado_2 = int(h/K_Corr)-15
+        # start_point = (Load_Cg_x_pix-Lado_2,Load_Cg_y_pix-Lado_2) 
+        # end_point = (Load_Cg_x_pix+Lado_2,Load_Cg_y_pix+Lado_2) 
+        # TemporaryCanvas = cv2.rectangle(TemporaryCanvas, start_point, end_point, color=(0, 0, 255), thickness=5)
         
-        #Escreve o Angulo theta:
-        Angulo = str(("%.2f" %(theta*360/(2*3.1514))))
-        Coord_Txt_angulo = np.array([x_pix-80,y_pix])
-        TemporaryCanvas = cv2.putText(TemporaryCanvas , Angulo, Coord_Txt_angulo , cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.7, color=(255,0,255),thickness=2,lineType=2)
+        # #Escreve o Angulo theta:
+        # Angulo = str(("%.2f" %(theta*360/(2*3.1514))))
+        # Coord_Txt_angulo = np.array([x_pix-80,y_pix])
+        # TemporaryCanvas = cv2.putText(TemporaryCanvas , Angulo, Coord_Txt_angulo , cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.7, color=(255,0,255),thickness=2,lineType=2)
         
-        #Escreve a condição de falha:
-        Titulo_falha = "Carga maxima [Kg]:"
-        Coord_Txt_Cond = np.array([50,100])
-        TemporaryCanvas = cv2.putText(TemporaryCanvas , Titulo_falha , Coord_Txt_Cond, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(255,0,255),thickness=2,lineType=2)
-        for n in range(0,len(Lista_Condicoes_Sorted)):
-            Coord_Txt_Cond = Coord_Txt_Cond + np.array([0,40])
-            Cond_text = str("  -" + Lista_Condicoes_Sorted[n]) + ": " + str("%.2f" %Lista_Carga_Sorted[n]) + "Kg;"
-            TemporaryCanvas = cv2.putText(TemporaryCanvas , Cond_text, Coord_Txt_Cond, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(255,0,255),thickness=2,lineType=2)
+        # #Escreve a condição de falha:
+        # Titulo_falha = "Carga maxima [Kg]:"
+        # Coord_Txt_Cond = np.array([50,100])
+        # TemporaryCanvas = cv2.putText(TemporaryCanvas , Titulo_falha , Coord_Txt_Cond, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(255,0,255),thickness=2,lineType=2)
+        # for n in range(0,len(Lista_Condicoes_Sorted)):
+        #     Coord_Txt_Cond = Coord_Txt_Cond + np.array([0,40])
+        #     Cond_text = str("  -" + Lista_Condicoes_Sorted[n]) + ": " + str("%.2f" %Lista_Carga_Sorted[n]) + "Kg;"
+        #     TemporaryCanvas = cv2.putText(TemporaryCanvas , Cond_text, Coord_Txt_Cond, cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.8, color=(255,0,255),thickness=2,lineType=2)
         
-        cv2.imwrite("Imagens\\"+str(frame_number)+".png", TemporaryCanvas)
-        frame_number = frame_number + 1
+        # #Salva a imagem:
+        # cv2.imwrite("Imagens\\"+str(frame_number)+".png", TemporaryCanvas)
+        # frame_number = frame_number + 1
         
 
-# cv2.imshow("MainImage",MainCanvas)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+# Plotar a matriz de força máxima sobre a imagem
+fig, ax = plt.subplots()
+Background = cv2.cvtColor(MainCanvas, cv2.COLOR_BGR2RGB)  # Converte para RGB para exibir com Matplotlib
+ax.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
+cax = ax.imshow(Matriz_Carga, extent=[X_min, X_max, Y_min, Y_max], origin='lower', cmap='viridis', alpha=0.6)
+cbar = fig.colorbar(cax, ax=ax, orientation='vertical')
+cbar.set_label("Carga Maxima [Kg]")
+ax.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
+ax.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
+plt.show()
