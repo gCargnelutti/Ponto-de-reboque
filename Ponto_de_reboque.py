@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from scipy.interpolate import griddata
 import cv2
 
 #Importação e tratamento inicial da imagem do carro:
@@ -31,11 +32,11 @@ Coef_Atrito_L = 0.8 #Coeficiente de atrito da carga com a superficie
 
 
 #Parametros relacionados à analise:
-X_min = -100 #Limite inferior de analise em "x" [mm]
+X_min = -300 #Limite inferior de analise em "x" [mm]
 X_max = 300 #Limite superior de analise em "x" [mm]
 Y_min = 0 #Limite inferior de analise em "y" [mm]
-Y_max = 700 #Limite superior de analise em "y" [mm]
-passo = 1
+Y_max = 750 #Limite superior de analise em "y" [mm]
+passo = 5
 
 
 
@@ -55,20 +56,23 @@ MainCanvas[0:Alt_Main,int(L/K_Corr):Lrg_Main+int(L/K_Corr)] = MainImage
 #Coordenadas do centro da roda: (x,y) na nova imagem:
 Roda_x_pix = Lrg_Canv - Lrg_Main + Im_x_R
 Roda_y_pix = Alt_Canv - Alt_Main + Im_y_R
-#MainCanvas = cv2.circle(MainCanvas, [Roda_x_pix,Roda_y_pix], radius=10, color=(255, 0, 255), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
-#Coordenadas do C.G. do carro: (x,y) na nova imagem:
+# MainCanvas = cv2.circle(MainCanvas, [Roda_x_pix,Roda_y_pix], radius=10, color=(255, 0, 255), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
+# Coordenadas do C.G. do carro: (x,y) na nova imagem:
 Cg_x_pix = Roda_x_pix + int(Cg_x/K_Corr)
 Cg_y_pix = Roda_y_pix - int(Cg_y/K_Corr)
-MainCanvas = cv2.circle(MainCanvas, [Cg_x_pix,Cg_y_pix], radius=10, color=(0, 255, 0), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
+# MainCanvas = cv2.circle(MainCanvas, [Cg_x_pix,Cg_y_pix], radius=10, color=(0, 255, 0), thickness=-1) #As coordenadas para o circulo são (x,y) mesmo
 TemporaryCanvas = 255 * np.ones([Alt_Canv,Lrg_Canv,3], np.uint8)
 
 
-Matriz_Carga = np.zeros(( int((X_max - X_min)/passo) , int((Y_max - Y_min)/passo)))
-Matriz_Cores = np.zeros(( int((X_max - X_min)/passo) , int((Y_max - Y_min)/passo)))
-Matriz_sin = np.zeros(( X_max - X_min , Y_max - Y_min))
+#Criando as listas para armazenas os valores
+List_Coord_x = []
+List_Coord_y = []
+List_Carga = []
+List_F_Hor = []
+List_Cor = []
+
+
 frame_number = 1 
-
-
 for x in range(X_min,X_max,passo):
     for y in range(Y_min,Y_max,passo):
         
@@ -124,12 +128,16 @@ for x in range(X_min,X_max,passo):
         Carga_Max_4x2 = (F_Hor_Max_4x2/Coef_Atrito_L + F_Ver_Max_4x2)/g #[Kg]
 
         #Analise e comparação dos resultados de força horizontal máxima:
-        # Lista_Forcas_Hor = [(F_Hor_Max_Elv) , (F_Hor_Max_4x4)]
-        # Lista_Forcas_Hor_Sorted = sorted(Lista_Forcas_Hor)
+
         Lista_Carga = [(Carga_Max_Elv) , (Carga_Max_4x4) , (Carga_Max_4x2)]
         Lista_Carga_Sorted = sorted(Lista_Carga)
+        # Lista_Condicoes = ["Elevacao da dianteira"  , "Escorregamento 4x4" , "Escorregamento 4x2"]
+        # Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Condicoes))] #Criterio de comparação CARGA
+
+        Lista_F_Hor = [F_Hor_Max_Elv,F_Hor_Max_4x4,F_Hor_Max_4x2]
+        Lista_F_Hor_Sorted = sorted(Lista_F_Hor)
         Lista_Condicoes = ["Elevacao da dianteira"  , "Escorregamento 4x4" , "Escorregamento 4x2"]
-        Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Condicoes))] #Criterio de comparação
+        Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_F_Hor, Lista_Condicoes))] #Criterio de comparação FORCA HORIZONTAL
         
         
 
@@ -143,9 +151,14 @@ for x in range(X_min,X_max,passo):
         Lista_Cores_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Cores))]
 
         Carga_max = Lista_Carga_Sorted[0]
-        Matriz_Carga[x - X_min , y - Y_min] = Carga_max
-        #Matriz_Cores[(int((x - X_min)/passo)) , (int((y - Y_min)/passo)) ] = Lista_Cores_Sorted[0]
+        Forca_Hor_Max = Lista_F_Hor_Sorted[0]
+        Cor_Max = Lista_Cores_Sorted[0]
 
+        List_Coord_x.append(x)
+        List_Coord_y.append(y)
+        List_Carga.append(Carga_max)
+        List_F_Hor.append(Forca_Hor_Max)
+        List_Cor.append(Cor_Max)
 
 
 
@@ -188,13 +201,35 @@ for x in range(X_min,X_max,passo):
         # frame_number = frame_number + 1
         
 
-# Plotar a matriz de força máxima sobre a imagem
-fig, ax = plt.subplots()
+# Plotar as listas de resultados
 Background = cv2.cvtColor(MainCanvas, cv2.COLOR_BGR2RGB)  # Converte para RGB para exibir com Matplotlib
+
+#Grafico da carga máxima
+fig, ax = plt.subplots()
 ax.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
-cax = ax.imshow(Matriz_Carga, extent=[X_min, X_max, Y_min, Y_max], origin='lower', cmap='viridis', alpha=0.6)
+cax = plt.scatter(List_Coord_x,List_Coord_y,edgecolors='none',s=1,c=List_Carga,cmap="inferno")
 cbar = fig.colorbar(cax, ax=ax, orientation='vertical')
 cbar.set_label("Carga Maxima [Kg]")
 ax.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
 ax.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
+
+
+#Grafico da força horizontal máxima
+fig, bx = plt.subplots()
+bx.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
+cbx = plt.scatter(List_Coord_x,List_Coord_y,edgecolors='none',s=1,c=List_F_Hor,cmap="inferno")
+cbar = fig.colorbar(cbx,ax=bx, orientation='vertical')
+cbar.set_label("Força horizonal máxima [N]")
+bx.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
+bx.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
+
+#Grafico da condição de falha
+fig, cx = plt.subplots()
+cx.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
+ccx = plt.scatter(List_Coord_x,List_Coord_y,edgecolors='none',s=1,c=List_Cor,cmap="inferno")
+cbar = fig.colorbar(ccx,ax=cx, orientation='vertical')
+cbar.set_label("Carga Maxima [Kg]")
+cx.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
+cx.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
+
 plt.show()
