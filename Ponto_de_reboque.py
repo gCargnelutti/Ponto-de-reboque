@@ -18,7 +18,7 @@ K_Corr = int(EntreEixos_mm/EntreEixos_Pixel) #Coeficiente de correção [mm/pixe
 Cg_x = 500 #Coordenadas do centro de gravidade em relação ao centro da roda traseira [mm]
 Cg_y = 250 #Coordenadas do centro de gravidade em relação ao centro da roda traseira [mm]
 L = 1500 #Comprimento da corda [mm]
-h = 100 #Altura do Cg da carga [mm]
+h = 200 #Altura do Cg da carga [mm]
 R = 266 #Raio da roda [mm]
 M = 235 #Massa do carro [Kg]
 g = 9.8 #Aceleração da gravidade [m/s^2]
@@ -35,7 +35,7 @@ Coef_Atrito_L = 0.8 #Coeficiente de atrito da carga com a superficie
 X_min = -300 #Limite inferior de analise em "x" [mm]
 X_max = 300 #Limite superior de analise em "x" [mm]
 Y_min = 0 #Limite inferior de analise em "y" [mm]
-Y_max = 750 #Limite superior de analise em "y" [mm]
+Y_max = 900 #Limite superior de analise em "y" [mm]
 passo = 5
 
 
@@ -126,12 +126,12 @@ for x in range(X_min,X_max,passo):
 
         #Analise e comparação dos resultados de força horizontal máxima:
 
-        Lista_Carga = [(Carga_Max_Elv) , (Carga_Max_4x4) , (Carga_Max_4x2)]
+        Lista_Carga = [(Carga_Max_Elv) , (Carga_Max_4x4)]
         Lista_Carga_Sorted = sorted(Lista_Carga)
         # Lista_Condicoes = ["Elevacao da dianteira"  , "Escorregamento 4x4" , "Escorregamento 4x2"]
         # Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Condicoes))] #Criterio de comparação CARGA
 
-        Lista_F_Hor = [F_Hor_Max_Elv,F_Hor_Max_4x4,F_Hor_Max_4x2]
+        Lista_F_Hor = [F_Hor_Max_Elv,F_Hor_Max_4x4]
         Lista_F_Hor_Sorted = sorted(Lista_F_Hor)
         Lista_Condicoes = ["Elevacao da dianteira"  , "Escorregamento 4x4" , "Escorregamento 4x2"]
         Lista_Condicoes_Sorted = [x for y, x in sorted(zip(Lista_F_Hor, Lista_Condicoes))] #Criterio de comparação FORCA HORIZONTAL
@@ -143,7 +143,7 @@ for x in range(X_min,X_max,passo):
         Cor_Carga_Max_Elv = [1,0,0]
         Cor_Carga_Max_4x4 = [0,1,0]
         Cor_Carga_Max_4x2 = [0,0,1]
-        Lista_Cores = [Cor_Carga_Max_Elv,Cor_Carga_Max_4x4,Cor_Carga_Max_4x2]
+        Lista_Cores = [Cor_Carga_Max_Elv,Cor_Carga_Max_4x4]
         Lista_Cores_Sorted = [x for y, x in sorted(zip(Lista_Carga, Lista_Cores))]
 
         Carga_max = Lista_Carga_Sorted[0]
@@ -210,7 +210,7 @@ cbar = fig.colorbar(cax, ax=ax, orientation='vertical')
 cbar.set_label("Carga Maxima [Kg]")
 ax.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
 ax.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
-fig.savefig("Carga_Maxima_L="+ str(L) +"_h="+ str(h) +".png")
+fig.savefig("Carga_Maxima_L="+ str(L) +"_h="+ str(h) +".png" , dpi=300)
 #Grafico da força horizontal máxima
 fig, bx = plt.subplots()
 bx.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
@@ -219,7 +219,7 @@ cbar = fig.colorbar(cbx,ax=bx, orientation='vertical')
 cbar.set_label("Força horizonal máxima [N]")
 bx.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
 bx.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
-fig.savefig("For_Horizontal_L="+ str(L) +"_h="+ str(h) +".png")
+fig.savefig("For_Horizontal_L="+ str(L) +"_h="+ str(h) +".png", dpi=300)
 #Grafico da condição de falha
 fig, cx = plt.subplots()
 cx.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
@@ -228,7 +228,7 @@ cbar = fig.colorbar(ccx,ax=cx, orientation='vertical')
 cbar.set_label("Carga Maxima [Kg]")
 cx.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
 cx.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
-fig.savefig("Cor_Max_L="+ str(L) +"_h="+ str(h) +".png")
+fig.savefig("Cor_Max_L="+ str(L) +"_h="+ str(h) +".png", dpi=300)
 #Grafico da condição de falha 4x4 especificamente
 fig, dx = plt.subplots()
 dx.imshow(Background, extent=[Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr,(-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr])  
@@ -237,5 +237,5 @@ cbar = fig.colorbar(cdx,ax=dx, orientation='vertical')
 cbar.set_label("Força horizontal máxima 4x4 [N]")
 dx.set_xlim(Roda_x_pix*K_Corr,(-1)*(Lrg_Canv-Roda_x_pix)*K_Corr)
 dx.set_ylim((-1)*(Alt_Canv-Roda_y_pix)*K_Corr,Roda_y_pix*K_Corr)
-fig.savefig("F_Hor_Max_4x4_L="+ str(L) +"_h="+ str(h) +".png")
+fig.savefig("F_Hor_Max_4x4_L="+ str(L) +"_h="+ str(h) +".png", dpi=300)
 plt.show()
